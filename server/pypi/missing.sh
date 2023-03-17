@@ -4,16 +4,19 @@ set -e
 # shellcheck source=/dev/null
 . environment.sh
 
-# check for package with no output in dist folder
+# check for missing packages
 
-for PACKAGE in ./packages/*; do
-  if ! [ -d "${DIST_DIR}/$(basename "${PACKAGE}")" ];then
-    echo "- $(basename "${PACKAGE}"): all"
+for package in ./packages/*; do
+  if ! [ -d "${DIST_DIR}/$(basename "${package}")" ]; then
+    echo "- $(basename "${package}"): all"
   else
-    for PYTHON_VERSION in ${PYTHON_VERSIONS}; do
-      if ! [ "$(ls "dist/$(basename "${PACKAGE}")" | grep -c "cp${PYTHON_VERSION/./}")" -ge "4" ]; then
-        echo "- $(basename "${PACKAGE}"): ${PYTHON_VERSION}"
+    for python_version in ${PYTHON_VERSIONS}; do
+      # shellcheck disable=SC2010
+      if ! [ "$(ls "${DIST_DIR}/$(basename "${package}")" | grep -c "cp${python_version/./}")" -ge "4" ]; then
+        echo "- $(basename "${package}"): ${python_version}"
       fi
     done
   fi
 done
+
+echo "${0##*/} completed successfully."

@@ -9,11 +9,12 @@
 # be worked around by changing the importer to use RTLD_DEEPBIND, but that might have undesired
 # effects on other packages, so it would have to be tested thoroughly.
 
-{% set version = "1.16" %}
-
 package:
   name: chaquopy-libiconv
-  version: {{ version }}
+  version: 1.16
+
+build:
+  number: 1
 
 source:
-  url: https://ftp.gnu.org/pub/gnu/libiconv/libiconv-{{ version }}.tar.gz
+  url: https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.16.tar.gz

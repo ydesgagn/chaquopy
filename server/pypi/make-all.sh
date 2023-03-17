@@ -6,41 +6,16 @@ set -e
 
 # default values and settings
 
-OPTIONS=""
+options=""
 
 # parse command line
 
-POSITIONAL=()
-while [[ $# -gt 0 ]] ; do
-  key="${1}"
+#[ argument,variable_name,default_value,required,append,help_text
+# --package,options,-1,0,1,package
+# --year,options,-1,0,1,year
+#]
 
-  case "${key}" in
-    --help)
-      echo "Usage: make.sh options
-
-      options
-              --package package
-              --year year"
-      exit 0
-      ;;
-    --package)
-      OPTIONS="${OPTIONS} --package ${2}"
-      shift
-      shift
-      ;;
-    --year)
-      OPTIONS="${OPTIONS} --year ${2}"
-      shift
-      shift
-      ;;
-    *)
-      POSITIONAL+=("$1") # save it in an array for later
-      shift
-    ;;
-  esac
-done
-
-set -- "${POSITIONAL[@]}" # restore positional parameters
+. <(parse_command_line)
 
 # build packages for all python versions
 
@@ -48,9 +23,10 @@ rm -f "${LOGS}/success.log" "${LOGS}/fail.log"
 touch "${LOGS}/success.log" "${LOGS}/fail.log"
 eval "$(command conda 'shell.bash' 'hook')"
 
-for PYTHON_VERSION in ${PYTHON_VERSIONS}; do
-  conda activate "${CONDA_ENV}-${PYTHON_VERSION}"
-  ./make.sh ${OPTIONS}
+for python_version in ${PYTHON_VERSIONS}; do
+  conda activate "${CONDA_ENV}-${python_version}"
+  # shellcheck disable=SC2086
+  ./make.sh ${options}
 done
 
-echo "Completed successfully."
+echo "${0##*/} completed successfully."

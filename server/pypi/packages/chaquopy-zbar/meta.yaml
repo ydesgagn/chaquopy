@@ -1,12 +1,9 @@
-{% set version = "0.23.90" %}
-
 package:
   name: chaquopy-zbar
-  version: {{ version }}
+  version: 0.23.90
+
+build:
+  number: 1
 
 source:
-  url: https://linuxtv.org/downloads/zbar/zbar-{{ version }}.tar.gz
-
-requirements:
-  host:
-    - chaquopy-libiconv 1.16
+  url: https://linuxtv.org/downloads/zbar/zbar-0.23.90.tar.gz

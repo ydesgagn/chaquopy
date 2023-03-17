@@ -43,7 +43,7 @@
 - pyzmq: needs chaquopy-libzmq
 - rawpy: subrepo cloning failure?
 - rpi-gpio: does this make any sense? Fails build due to missing sys/epoll.h
-- scikit-image: needs numpy; numpy configuration problem
+- scikit-image: needs numpy; numpy configuration problem[after_install.sh](..%2F..%2F..%2Finnodem%2Fin-api%2Fcodedeploy%2Fafter_install.sh)
 - scikit-learn: needs numpy, scipy, chaquopy-openblas
 - scipy: needs numpy; can't find at build time
 - sentencepiece: cmake build failure

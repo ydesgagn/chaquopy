@@ -1,0 +1,15 @@
+cppy==1.2.1
+cython==0.29.33
+jinja2==3.1.2
+jsonschema==2.6.0
+numpy==1.24.2
+pbxproj==3.5.0
+pip-tools==6.12.2
+pybind11==2.10.3
+pyelftools==0.24
+pythran==0.12.1
+pyyaml==6.0
+scikit-build==0.16.7
+scipy==1.9.3
+sphinx==6.1.3
+wheel==0.37.1

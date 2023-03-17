@@ -6,23 +6,22 @@ set -e
 
 # default values and settings
 
-DIST_DIR="dist"
-YEAR="2019"
-
-# packages to build
-
-PACKAGES="
+packages="
     cffi \
     numpy \
     aiohttp \
+    argon2-cffi \
     backports-zoneinfo \
+    bcrypt \
     bitarray \
     brotli \
+    cryptography \
     cymem \
     cytoolz \
     editdistance \
     ephem \
     frozenlist \
+    gensim \
     greenlet \
     kiwisolver \
     lru-dict \
@@ -55,70 +54,54 @@ PACKAGES="
 
 # parse command line
 
-POSITIONAL=()
-while [[ $# -gt 0 ]] ; do
-  key="${1}"
+#[ argument,variable_name,default_value,required,help_text
+# --package,packages,-1,0,0,package
+# --year,year,2019,0,0,year
+#]
 
-  case "${key}" in
-    --help)
-      echo "Usage: make.sh options
+. <(parse_command_line)
 
-      options
-              --package package
-              --year year"
-      exit 0
-      ;;
-    --package)
-      PACKAGES="${2}"
-      shift
-      shift
-      ;;
-    --year)
-      YEAR="${2}"
-      shift
-      shift
-      ;;
-    *)
-      POSITIONAL+=("$1") # save it in an array for later
-      shift
-    ;;
-  esac
-done
+# set path to find the bin directory with our helper scripts
 
-set -- "${POSITIONAL[@]}" # restore positional parameters
+base_dir="$(pwd)"
+export PATH="${base_dir}/bin:${PATH}"
 
 # build packages
 
 touch "${LOGS}/success.log" "${LOGS}/fail.log"
-PYTHON_VERSION=$(python --version | awk '{ print $2 }' | awk -F '.' '{ print $1 "." $2 }')
+python_version=$(python --version | awk '{ print $2 }' | awk -F '.' '{ print $1 "." $2 }')
 
-for PACKAGE in ${PACKAGES}; do
-  PACKAGE_VERSIONS="$(./versions.py --year "${YEAR}" --package "${PACKAGE}" --python "${PYTHON_VERSION}")"
-  printf "\n### Attempting package %s with versions: %s ###\n" "${PACKAGE}" "${PACKAGE_VERSIONS}"
+for package in ${packages}; do
+  package_versions="$(versions.sh --year "${year}" --package "${package}" --python "${python_version}")"
+  printf "\n### Attempting package %s with versions: %s ###\n" "${package}" "${package_versions}"
 
-  for PACKAGE_VERSION in ${PACKAGE_VERSIONS}; do
+  for package_version in ${package_versions}; do
     # edit package dependencies
     # FIXME: remove the for loop with the sed below
     # FIXME: short term workaround until we can find a better way to deal with dependencies
     # FIXME: without editing the meta.yaml file and without generating a lot of manual maintenance
 
-    for DEPENDENCY in numpy; do
-      if grep "${DEPENDENCY}" "packages/${PACKAGE}/meta.yaml" &>/dev/null; then
-        sed -i '' "s/- ${DEPENDENCY}.*/- ${DEPENDENCY} $(ls -1 "${DIST_DIR}/${DEPENDENCY}"/*"${PYTHON_VERSION/./}"* | head -1 | awk -F '-' '{ print $2 }' )/g" "packages/${PACKAGE}/meta.yaml"
+    # shellcheck disable=SC2043
+    for dependency in numpy; do
+      if grep "${dependency}" "packages/${package}/meta.yaml" &>/dev/null; then
+        # shellcheck disable=SC2012
+        sed -i '' "s/- ${dependency}.*/- ${dependency} $(ls -1 "${DIST_DIR}/${dependency}"/*"${python_version/./}"* | head -1 | awk -F '-' '{ print $2 }')/g" "packages/${package}/meta.yaml"
       fi
     done
 
-    printf "\n\n*** Building package %s version %s for Python %s ***\n\n" "${PACKAGE}" "${PACKAGE_VERSION}" "${PYTHON_VERSION}"
-    python build-wheel.py --toolchain "${TOOLCHAINS}" --python "${PYTHON_VERSION}" --os iOS "${PACKAGE}" "${PACKAGE_VERSION}" 2>&1 | tee "${LOGS}/${PYTHON_VERSION}/${PACKAGE}.log"
+    printf "\n\n*** Building package %s version %s for Python %s ***\n\n" "${package}" "${package_version}" "${python_version}"
+    build-wheels.sh --toolchain "${TOOLCHAINS}" --python "${python_version}" --os iOS --package "${package}" --package-version "${package_version}" 2>&1 | tee "${LOGS}/${python_version}/${package}.log"
 
     # shellcheck disable=SC2010
-    if [ "$(ls "dist/${PACKAGE}" | grep "cp${PYTHON_VERSION/./}" | grep -c "${PACKAGE_VERSION}")" -ge "4" ]; then
-      echo "${PACKAGE}-${PACKAGE_VERSION} with Python ${PYTHON_VERSION}" >> "${LOGS}/success.log"
+    if [ "$(ls "${DIST_DIR}/${package}" | grep "cp${python_version/./}" | grep -c "${package_version}")" -ge "4" ]; then
+      echo "${package}-${package_version} with Python ${python_version}" >>"${LOGS}/success.log"
     else
-      echo "${PACKAGE}=${PACKAGE_VERSION} with Python ${PYTHON_VERSION}" >> "${LOGS}/fail.log"
+      echo "${package}=${package_version} with Python ${python_version}" >>"${LOGS}/fail.log"
     fi
   done
 done
+
+# print build results
 
 echo ""
 echo "Packages built successfully:"
@@ -127,4 +110,5 @@ echo ""
 echo "Packages with errors:"
 cat "${LOGS}/fail.log"
 echo ""
-echo "Completed successfully."
+
+echo "${0##*/} completed successfully."

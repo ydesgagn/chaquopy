@@ -1,0 +1,27 @@
+# The ABIS dictionary is layered: os->sdk->architecture
+os:
+  - iOS:
+      - iphoneos:
+          - arm64:
+              name: iphoneos_arm64
+              tool_prefix: arm64-apple-ios
+              cflags: ''
+              ldflags: ''
+              sdk: iphoneos
+              slice: ios-arm64
+
+      - iphonesimulator:
+          - arm64:
+              name: iphonesimulator_arm64
+              tool_prefix: arm64-apple-ios-simulator
+              cflags: ''
+              ldflags: ''
+              sdk: iphonesimulator
+              slice: ios-arm64_x86_64-simulator
+          - x86_64:
+              name: iphonesimulator_x86_64
+              tool_prefix: x86_64-apple-ios-simulator
+              cflags: ''
+              ldflags: ''
+              sdk: iphonesimulator
+              slice: ios-arm64_x86_64-simulator
