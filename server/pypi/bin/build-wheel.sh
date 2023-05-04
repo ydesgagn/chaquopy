@@ -10,6 +10,7 @@ patch_dir="patches"
 prefix_dir="prefix"
 requirements_dir="requirements"
 source_dir="src"
+wheel_file="WHEEL"
 
 # parse command line
 
@@ -69,8 +70,7 @@ if [ -z "${build_number}" ]; then
   build_number="$(yq '.build.number' "${meta_file}")"
 
   if [ "${build_number}" == "null" ]; then
-    echo "Error: build number not found in ${meta_file} !"
-    exit 1
+    build_number="0"
   fi
 fi
 
@@ -94,9 +94,20 @@ else
   package_compat_tag="py3-none-${compat_tag}"
 fi
 
+# create clean directories
+
+rm -rf "${package_dir}/build/${version}/${package_compat_tag}"
+mkdir -p "${package_dir}/build/${version}/${package_compat_tag}"
+
 # install requirements
 
-install-requirements.sh --requirements "$(pwd)/${PACKAGES_DIR}/${package}/requirements.in"
+if [ "$(yq '.requirements.host' "${meta_file}")" == "null" ]; then
+  dependencies=null
+else
+  dependencies="$(yq '.requirements.host.[]' "${meta_file}" | tr '\n' ' ')"
+fi
+
+install-requirements.sh --dependencies "${dependencies}" --dependencies-dir "${package_dir}/build/${version}/${package_compat_tag}/${requirements_dir}" --requirements "$(pwd)/${PACKAGES_DIR}/${package}/requirements.in"
 
 # unpack source
 
@@ -108,7 +119,7 @@ apply-patches.sh --patch-dir "${package_dir}/${patch_dir}" --source-dir "${packa
 
 # build package
 
-build-package.sh --abi-name "${abi_name}" --api-level "${api_level}" --architecture "${architecture}" --build-number "${build_number}" --cflags "${cflags}" --compat-tag "${package_compat_tag}" --directory "${package_dir}/build/${version}/${package_compat_tag}" --ldflags "${ldflags}" --os "${os}" --package "${package}" --prefix-dir "${package_dir}/build/${version}/${package_compat_tag}/${prefix_dir}" --python "${python}" --recipe-dir "${package_dir}" --sdk "${sdk}" --slice "${slice}" --source-dir "${package_dir}/build/${version}/${package_compat_tag}/${source_dir}" --tool-prefix "${tool_prefix}" --toolchain "${toolchain}" --version "${version}"
+build-package.sh --abi-name "${abi_name}" --api-level "${api_level}" --architecture "${architecture}" --build-number "${build_number}" --cflags "${cflags}" --compat-tag "${package_compat_tag}" --dependencies-dir "${package_dir}/build/${version}/${package_compat_tag}/${requirements_dir}" --directory "${package_dir}/build/${version}/${package_compat_tag}" --ldflags "${ldflags}" --os "${os}" --package "${package}" --prefix-dir "${package_dir}/build/${version}/${package_compat_tag}/${prefix_dir}" --python "${python}" --recipe-dir "${package_dir}" --sdk "${sdk}" --slice "${slice}" --source-dir "${package_dir}/build/${version}/${package_compat_tag}/${source_dir}" --tool-prefix "${tool_prefix}" --toolchain "${toolchain}" --version "${version}"
 
 # build fat wheel
 
@@ -116,34 +127,57 @@ if [ "${last_wheel}" == "1" ]; then
   normalize_name_pypi="$(echo "${package}" | sed -E 's/[-_.]+/-/g' | tr '[:upper:]' '[:lower:]')"
   fat_wheel_dir="${package_dir}/build/${version}"
 
-  if [ "${package_needs_python}" == "null" ]; then
+  if [ "${package_needs_python}" == "1" ]; then
     fat_compat_tag="cp${python/./}-cp${python/./}-${os,,}_${api_level//./_}"
   else
     fat_compat_tag="py3-none-${os,,}_${api_level//./_}"
   fi
 
-  rm -rf "${fat_wheel_dir}/${fat_compat_tag}"
+  rm -rf "${fat_wheel_dir:?}/${fat_compat_tag:?}"
   mkdir -p "${DIST_DIR}/${normalize_name_pypi}" "${fat_wheel_dir}/${fat_compat_tag}"
-  unzip -d "${fat_wheel_dir}/${fat_compat_tag}" -q "${package_dir}/build/${version}/${package_compat_tag}/${source_dir}"/*.whl
-  sed -i '' 's/_iphone.*//g' "${fat_wheel_dir}/${fat_compat_tag}"/*.dist-info/WHEEL
-  wheel_folders=($(ls "${package_dir}/build/${version}" | grep _iphone | grep -v simulator_arm64))
+  wheel_folders=($(ls "${package_dir}/build/${version}" | grep _iphone))
+
+  for folder in "${wheel_folders[@]}"; do
+    unzip -oqd "${fat_wheel_dir}/${fat_compat_tag}" "${package_dir}/build/${version}/${folder}/${source_dir}"/*.whl
+
+    if [ -n "$(find "${fat_wheel_dir}/${folder}/${prefix_dir}" -maxdepth 0 -type d -empty 2>/dev/null)" ]; then
+      unzip -oqd "${fat_wheel_dir}/${folder}/${prefix_dir}" "${package_dir}/build/${version}/${folder}/${source_dir}"/*.whl
+    fi
+  done
+
+  {
+    echo "Wheel-Version: 1.0"
+    echo "Root-Is-Purelib: false"
+    echo "Generator: build-wheel.sh"
+    echo "Build: ${build_number}"
+    echo "Tag: ${fat_compat_tag}"
+  } > "${fat_wheel_dir}/${fat_compat_tag}"/*.dist-info/"${wheel_file}"
+
+  pushd "${fat_wheel_dir}/${fat_compat_tag}"
 
   while read -r file; do
-    if [[ "${file}" =~ (\.a|\.la|\.so|\.dylib)$ ]]; then
-      fat_binaries=""
+    fat_binaries=""
 
-      for folder in ${wheel_folders[@]}; do
-        if [ -e "${fat_wheel_dir}/${folder}/${prefix_dir}/${file}" ]; then
-          fat_binaries="${fat_binaries} ${fat_wheel_dir}/${folder}/${prefix_dir}/${file}"
-        else
-          rm "${fat_wheel_dir}/${fat_compat_tag}/${file}"
-          continue 2
-        fi
-      done
+    for folder in "${wheel_folders[@]}"; do
+      if [ -e "${fat_wheel_dir}/${folder}/${prefix_dir}/${file}" ]; then
+        fat_binaries="${fat_binaries} ${fat_wheel_dir}/${folder}/${prefix_dir}/${file}"
+      fi
+    done
 
+    if [ "$(echo ${fat_binaries} | wc -w)" -gt 2 ]; then
+      fat_binaries="$(echo ${fat_binaries} | awk '{ print $1 " " $3 }')"
+    fi
+
+    if [ "$(echo ${fat_binaries} | tr '[:space:]' '[\n*]' | grep -c arm64)" -gt 1 ]; then
+      fat_binaries="$(echo ${fat_binaries} | awk '{ print $1 }')"
+    fi
+
+    if [ "$(echo ${fat_binaries} | wc -w)" -ge 1 ]; then
       lipo -create -o "${fat_wheel_dir}/${fat_compat_tag}/${file}" ${fat_binaries}
     fi
-  done < <(awk -F ',' '{ print  $1}' < "${fat_wheel_dir}/${fat_compat_tag}"/*.dist-info/RECORD)
+  done < <(find -E . -regex '.*(\.a|\.la|\.so|\.dylib)$')
+
+  popd
 
   wheel pack "${fat_wheel_dir}/${fat_compat_tag}" --dest-dir "${DIST_DIR}/${normalize_name_pypi}" --build-number "${build_number}"
 fi

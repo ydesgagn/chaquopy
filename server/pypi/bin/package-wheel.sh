@@ -6,7 +6,10 @@ set -e
 
 # default values and settings
 
-license_file="LICENSE"
+license_file1="LICENSE"
+license_file2="COPYING"
+metadate_file="METADATA"
+wheel_file="WHEEL"
 
 # parse command line
 
@@ -35,7 +38,7 @@ mkdir -p "${info_dir}"
   echo "Version: ${version}"
   echo "Summary: "
   echo "Download-URL: "
-} > "${info_dir}/METADATA"
+} > "${info_dir}/${metadate_file}"
 
 {
   echo "Wheel-Version: 1.0"
@@ -43,14 +46,27 @@ mkdir -p "${info_dir}"
   echo "Generator: build-wheel.sh"
   echo "Build: ${build_number}"
   echo "Tag: ${compat_tag}"
-} > "${info_dir}/WHEEL"
+} > "${info_dir}/${wheel_file}"
 
-if [ -f "${source_dir}/${license_file}" ]; then
-  cp "${source_dir}/${license_file}" "${info_dir}"
-fi
-
-if [ -f "${source_dir}/${license_file}/${license_file}" ]; then
-  cp "${source_dir}/${license_file}/${license_file}" "${info_dir}"
+if [ -f "${source_dir}/${license_file1}" ]; then
+  cp "${source_dir}/${license_file1}" "${info_dir}"
+elif [ -f "${source_dir}/${license_file1}.md" ]; then
+  cp "${source_dir}/${license_file1}.md" "${info_dir}/${license_file1}"
+elif [ -f "${source_dir}/${license_file1}.txt" ]; then
+  cp "${source_dir}/${license_file1}.txt" "${info_dir}/${license_file1}"
+elif [ -f "${source_dir}/../../../../${license_file1}" ]; then
+  cp "${source_dir}/../../../../${license_file1}" "${info_dir}/${license_file1}"
+elif [ -f "${source_dir}/../../../../${license_file1}.md" ]; then
+  cp "${source_dir}/../../../../${license_file1}.md" "${info_dir}/${license_file1}"
+elif [ -f "${source_dir}/../../../../${license_file1}.txt" ]; then
+  cp "${source_dir}/../../../../${license_file1}.txt" "${info_dir}/${license_file1}"
+elif [ -f "${source_dir}/${license_file1}/${license_file1}" ]; then
+  cp "${source_dir}/${license_file1}/${license_file1}" "${info_dir}"
+elif [ -f "${source_dir}/${license_file2}" ]; then
+  cp "${source_dir}/${license_file2}" "${info_dir}/${license_file1}"
+else
+  echo "Error: no license file found !"
+  exit 1
 fi
 
 wheel pack "${prefix_dir}" --dest-dir "${source_dir}" --build-number "${build_number}"

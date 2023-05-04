@@ -1,6 +1,7 @@
 #!/bin/bash
 set -eu
 
+cp -f docs/FTL.TXT LICENSE
 ./configure --host=$CHAQUOPY_TRIPLET --without-harfbuzz --without-png
 make -j $CPU_COUNT
 make install prefix=$PREFIX

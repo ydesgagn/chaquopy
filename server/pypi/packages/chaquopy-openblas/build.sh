@@ -18,5 +18,7 @@ export USE_THREAD=0
 export NUM_THREADS=8
 
 TOOLCHAIN_PATH=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin
-make TARGET=${TARGET} BINARY=64 HOSTCC=clang CC="${TOOLCHAIN_PATH}/clang -isysroot ${SYSROOT_PATH} -arch ${ARCH} -miphoneos-version-min=12.0 -O2" NOFORTRAN=1 libs
+make TARGET=${TARGET} BINARY=64 HOSTCC=clang CC="${TOOLCHAIN_PATH}/clang -target ${CHAQUOPY_TRIPLET} -isysroot ${SYSROOT_PATH} -arch ${ARCH} -miphoneos-version-min=12.0 -O2" NOFORTRAN=1 libs
 make install
+rm "${PREFIX}/lib"/*.dylib
+clang -target "${CHAQUOPY_TRIPLET}" -isysroot "${SYSROOT_PATH}" -arch "${ARCH}" -fpic -shared -Wl,-all_load "${PREFIX}/lib/libopenblas.a" -o "${PREFIX}/lib/libopenblas.dylib"

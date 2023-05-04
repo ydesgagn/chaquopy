@@ -21,16 +21,15 @@ set -e
 
 # create clean directories
 
-rm -rf "${directory}"
 mkdir -p "${source_dir}"
 pushd "${directory}"
 
 # unpack source
 
 if [ "${needs_python}" == "1" ]; then
-  pip download --no-deps --no-binary "${package}" --no-build-isolation "${package}==${version}"
-  source_filename=$(find . -depth 1 -name "${package}*")
-  source_filename="${source_filename:2}"
+  source_filename="$(curl -s "https://pypi.org/pypi/${package}/json" | jq --raw-output --arg version "${version}" '.releases[$version][] | select(.packagetype == "sdist") | .url')"
+  curl --silent --location "${source_filename}" --output "${source_filename##*/}"
+  source_filename="${source_filename##*/}"
 elif [ "${url}" != "null" ] ;then
   source_filename="${url}"
   curl --silent --location "${source_filename}" --output "${source_filename##*/}"
@@ -62,6 +61,10 @@ if [ "${source_filename}" != "null" ]; then
 
   mv "${tmp_dir}"/*/* "${source_dir}"
   rm -rf "${source_filename}" "${tmp_dir}"
+
+  if [ -f  "${source_dir}/pyproject.toml" ]; then
+    mv "${source_dir}/pyproject.toml" "${source_dir}/pyproject-chaquopy-disabled.toml"
+  fi
 fi
 
 popd

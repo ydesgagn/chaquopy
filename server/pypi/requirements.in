@@ -1,15 +1,20 @@
+# These packages are included by default in a new virtualenv, but since we use them directly,
+# specify exact versions for reproducible builds.
+pip==23.0.1
+# We use a setuptools < 60 for compatibility with numpy's vendored distutils.
+setuptools<60
+wheel==0.40.0
+
+# Other direct requirements
+
 cppy==1.2.1
 cython==0.29.33
-jinja2==3.1.2
-jsonschema==2.6.0
+jsonschema==4.17.3
 numpy==1.24.2
 pbxproj==3.5.0
-pip-tools==6.12.2
 pybind11==2.10.3
 pyelftools==0.24
 pythran==0.12.1
 pyyaml==6.0
 scikit-build==0.16.7
-scipy==1.9.3
 sphinx==6.1.3
-wheel==0.37.1

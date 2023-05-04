@@ -31,9 +31,6 @@ rm -rf "${TOOLCHAINS}/cmake-${cmake_version}"* cmake.tar.gz
 
 # setup clean conda environments and toolchains for each Python versions
 
-rm -rf requirements.txt
-pip-compile --resolver=backtracking
-
 for python_version in ${PYTHON_VERSIONS}; do
   rm -rf "$(conda info | grep 'envs directories' | awk -F ':' '{ print $2 }' | sed -e 's/^[[:space:]]*//')/${CONDA_ENV:?}-${python_version}"
   conda create -y --name "${CONDA_ENV}-${python_version}" "python==${python_exact_versions[${python_version}]}"
